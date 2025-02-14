@@ -1,4 +1,4 @@
-import 'dart:io' show Directory, File, Platform;
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +10,43 @@ import 'package:path_provider/path_provider.dart';
 import 'package:image_analyzer/models/history_item.dart';
 import 'package:provider/provider.dart';
 import 'package:universal_html/html.dart' as html;
+import 'package:permission_handler/permission_handler.dart';
+
+/// This class uses your provided method to request storage permission
+/// and then returns the external storage path (Download folder on Android).
+class FileStorage {
+  static Future<String> getExternalDocumentPath() async {
+    // Check storage permission
+    var status = await Permission.storage.status;
+    if (!status.isGranted) {
+      await Permission.storage.request();
+    }
+    Directory _directory = Directory("");
+    if (Platform.isAndroid) {
+      // On Android, use the Download folder
+      _directory = Directory("/storage/emulated/0/Download");
+    } else {
+      _directory = await getApplicationDocumentsDirectory();
+    }
+    final exPath = _directory.path;
+    print("Saved Path: $exPath");
+    await Directory(exPath).create(recursive: true);
+    return exPath;
+  }
+
+  static Future<String> get _localPath async {
+    final String directory = await getExternalDocumentPath();
+    return directory;
+  }
+
+  /// Writes bytes to a file with the given name.
+  static Future<File> writeFileBytes(List<int> bytes, String name) async {
+    final path = await _localPath;
+    File file = File('$path/$name');
+    print("Saving file to: $path/$name");
+    return file.writeAsBytes(bytes, flush: true);
+  }
+}
 
 class AnalyzePage extends StatefulWidget {
   final String? imagePath;
@@ -53,7 +90,16 @@ class _AnalyzePageState extends State<AnalyzePage> {
     await Future.delayed(const Duration(seconds: 2));
 
     final analysisResult = {
-      'tags': ['name: abubakar','age:22 ','color: black','Object: 95%', 'Vehicle: supra', 'Quality: Excellent'],
+      'tags': [
+        'name: abubakar',
+        'age:22 ',
+        'city: lahore',
+        'country: pakistan',
+        'Vehicle: supra',
+        'color: black',
+        'Object: 95%',
+        'Quality: Excellent'
+      ],
       'confidence': '92%',
       'resolution': '4000x3000',
       'fileSize': '2.4 MB'
@@ -138,12 +184,10 @@ class _AnalyzePageState extends State<AnalyzePage> {
       }
     } else {
       try {
-        final Directory output = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
-        final String fileName = 'analysis_report_${DateTime.now().millisecondsSinceEpoch}.pdf';
-        final File file = File('${output.path}/$fileName');
-        
-        await file.writeAsBytes(pdfBytes);
-
+        // Save the file using FileStorage.
+        final String fileName =
+            'analysis_report_${DateTime.now().millisecondsSinceEpoch}.pdf';
+        File file = await FileStorage.writeFileBytes(pdfBytes, fileName);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -180,7 +224,10 @@ class _AnalyzePageState extends State<AnalyzePage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final appBarGradientColors = [Colors.blue.shade900, Colors.indigo.shade700];
     final bodyGradientColors = isDark
-        ? [const Color.fromARGB(255, 19, 19, 19), const Color.fromARGB(255, 19, 19, 19)]
+        ? [
+            const Color.fromARGB(255, 19, 19, 19),
+            const Color.fromARGB(255, 19, 19, 19)
+          ]
         : [Colors.blue.shade50, Colors.white];
     final textColor = isDark ? Colors.white : Colors.blue.shade900;
 
@@ -233,7 +280,8 @@ class _AnalyzePageState extends State<AnalyzePage> {
             color: Colors.white,
           ),
         ),
-        backgroundColor: _selectedImage != null ? Colors.indigo : Colors.blue.shade900,
+        backgroundColor:
+            _selectedImage != null ? Colors.indigo : Colors.blue.shade900,
       ),
     );
   }
@@ -300,12 +348,15 @@ class _AnalyzePageState extends State<AnalyzePage> {
               height: 200,
               margin: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
-                color: isDark ? const Color.fromARGB(255, 19, 19, 19) : Colors.white,
+                color: isDark
+                    ? const Color.fromARGB(255, 19, 19, 19)
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: isDark
-                        ? Colors.grey[600]!
-                        : Colors.blue.shade100, width: 2),
+                  color:
+                      isDark ? Colors.grey[600]! : Colors.blue.shade100,
+                  width: 2,
+                ),
               ),
               child: Center(
                 child: Column(
@@ -392,23 +443,28 @@ class AnalysisResultDialog extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-                ...results['tags'].map<Widget>((tag) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle_rounded,
-                              color: Colors.green.shade700, size: 24),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Text(tag,
-                                style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: textColor)),
+                ...results['tags'].map<Widget>((tag) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_rounded,
+                            color: Colors.green.shade700, size: 24),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Text(
+                            tag,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: textColor,
+                            ),
                           ),
-                        ],
-                      ),
-                    )),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
                 const SizedBox(height: 25),
                 Container(
                   padding: const EdgeInsets.all(15),
@@ -416,9 +472,9 @@ class AnalysisResultDialog extends StatelessWidget {
                     color: backgroundColor,
                     borderRadius: BorderRadius.circular(15),
                     border: Border.all(
-                        color: isDark
-                            ? Colors.grey[600]!
-                            : Colors.blue.shade100),
+                      color:
+                          isDark ? Colors.grey[600]! : Colors.blue.shade100,
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -442,7 +498,7 @@ class AnalysisResultDialog extends StatelessWidget {
                 const SizedBox(height: 25),
                 ElevatedButton.icon(
                   onPressed: onDownload,
-                  icon: Icon(Icons.picture_as_pdf, color: Colors.white),
+                  icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
                   label: Text('Download Full Report',
                       style: GoogleFonts.poppins(
                           fontWeight: FontWeight.w600, color: Colors.white)),
