@@ -41,9 +41,8 @@ class LoginScreen extends StatelessWidget {
   Widget _buildHeader() {
     return Column(
       children: [
-        Icon(Icons.photo_camera_back_outlined, size: 80, color: Colors.white),
-        const SizedBox(height: 20),
-        Text('ObjectIq',
+        const SizedBox(height: 24),
+        Text('Image Analyzer',
             style: GoogleFonts.poppins(
               fontSize: 28,
               fontWeight: FontWeight.w600,

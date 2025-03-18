@@ -1,10 +1,9 @@
 // home_page.dart
 import 'package:flutter/material.dart';
 import 'package:image_analyzer/screens/analyze_page.dart';
-import 'package:image_analyzer/screens/camera_page.dart';
 import 'package:image_analyzer/screens/history_page.dart';
 import 'package:image_analyzer/screens/settings_page.dart';
-import '../globals.dart'; // Import the global cameras list
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,8 +21,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _pages = [
       const AnalyzePage(),
-      // Pass the global cameras list to the CameraPage.
-      CameraPage(cameras: cameras),
+    
       const HistoryPage(),
       const SettingsPage(),
     ];
@@ -41,7 +39,7 @@ class _HomePageState extends State<HomePage> {
         onDestinationSelected: (index) => setState(() => _selectedIndex = index),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.analytics), label: 'Analyze'),
-          NavigationDestination(icon: Icon(Icons.camera_alt), label: 'Camera'),
+          
           NavigationDestination(icon: Icon(Icons.history), label: 'History'),
           NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
         ],

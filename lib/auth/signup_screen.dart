@@ -42,8 +42,7 @@ class SignupScreen extends StatelessWidget {
   Widget _buildHeader() {
     return Column(
       children: [
-        Icon(Icons.photo_camera_back, size: 80, color: Colors.white),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         Text('Create Account',
             style: GoogleFonts.poppins(
               fontSize: 28,

@@ -71,13 +71,66 @@ class _AnalyzePageState extends State<AnalyzePage> {
     }
   }
 
-  Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+  /// Updated _pickImage: if source is camera, request permission and open camera.
+  /// On web, pass webOptions to try opening the camera.
+  Future<void> _pickImage([ImageSource? source]) async {
+    source ??= ImageSource.gallery;
+    if (source == ImageSource.camera) {
+      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+        var cameraStatus = await Permission.camera.status;
+        if (!cameraStatus.isGranted) {
+          cameraStatus = await Permission.camera.request();
+          if (!cameraStatus.isGranted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Camera permission not granted')),
+            );
+            return;
+          }
+        }
+      }
+    }
+    // If on web and using camera, use webOptions so that it attempts to open the camera.
+    final XFile? image = await _picker.pickImage(
+      source: source,
+      preferredCameraDevice: source == ImageSource.camera ? CameraDevice.rear : CameraDevice.rear,
+    );
     if (image != null) {
       setState(() {
         _selectedImage = File(image.path);
+        _analysisResult = null; // clear previous analysis
       });
     }
+  }
+
+  /// Show bottom sheet for upload options.
+  void _showUploadOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take Photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Choose from Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _startAnalysis() async {
@@ -184,7 +237,6 @@ class _AnalyzePageState extends State<AnalyzePage> {
       }
     } else {
       try {
-        // Save the file using FileStorage.
         final String fileName =
             'analysis_report_${DateTime.now().millisecondsSinceEpoch}.pdf';
         File file = await FileStorage.writeFileBytes(pdfBytes, fileName);
@@ -233,6 +285,7 @@ class _AnalyzePageState extends State<AnalyzePage> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Text('Image Analysis',
             style: GoogleFonts.poppins(
                 fontWeight: FontWeight.w600, color: Colors.white)),
@@ -266,7 +319,7 @@ class _AnalyzePageState extends State<AnalyzePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _selectedImage != null ? _startAnalysis : _pickImage,
+        onPressed: _selectedImage != null ? _startAnalysis : _showUploadOptions,
         icon: Icon(
           _selectedImage != null ? Icons.analytics : Icons.add_photo_alternate,
           color: Colors.white,
@@ -274,7 +327,7 @@ class _AnalyzePageState extends State<AnalyzePage> {
         label: Text(
           _selectedImage != null
               ? (_isAnalyzing ? 'Analyzing...' : 'Start Analysis')
-              : 'Pick Image',
+              : 'Select Image',
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
             color: Colors.white,

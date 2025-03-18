@@ -9,7 +9,9 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
